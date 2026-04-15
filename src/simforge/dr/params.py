@@ -213,7 +213,7 @@ def sample_value(param: DRParam, rng: "np.random.Generator") -> float:  # type: 
 
     Returns:
         A float ready to write to the mjModel array.
-        If param.is_multipli2er=True, this already includes the default_value scaling.
+        If param.is_multiplier=True, this already includes the default_value scaling.
     """
     import numpy as np
 

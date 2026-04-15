@@ -1,0 +1,16 @@
+# Domain randomization: OFF
+#
+# This is the baseline config — no randomization at all.
+# The environment runs with the exact physics defined in the MJCF XML file.
+#
+# We use this for:
+#   1. Establishing a performance baseline (how well does a policy trained without
+#      DR perform on the standard task?)
+#   2. Phase 3 ablation: "no DR" is the control group
+#
+# The training code loads this config the same way as dr_moderate.yaml —
+# it just produces an empty param list, so DomainRandomizationWrapper
+# randomizes nothing (it's a no-op wrapper).
+
+domain_randomization:
+  # Empty on purpose. All params commented out = no randomization.
