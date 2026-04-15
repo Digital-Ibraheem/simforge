@@ -1,0 +1,62 @@
+# Out-of-distribution (OOD) evaluation configurations
+#
+# WHAT IS OOD EVALUATION?
+# After training with DR, we evaluate the policy under physics conditions it
+# may never have seen during training. This is "out-of-distribution" testing —
+# the standard way to measure robustness (generalization beyond training data).
+#
+# WHY THESE SPECIFIC CONFIGS?
+# Each config isolates one axis of variation to measure the policy's sensitivity:
+#   - heavy_object:  mass sensitivity (can it still grasp a heavy block?)
+#   - low_friction:  surface sensitivity (does it slip when friction is low?)
+#   - moon_gravity:  gravity sensitivity (does timing/force generalize?)
+#   - combined_hard: multiple perturbations at once (realistic stress test)
+#   - extreme:       beyond what any training DR would have seen (sanity check)
+#
+# EXPECTED RESULTS:
+#   no-DR policy:        high on "default", drops sharply on all others
+#   moderate-DR policy:  slight drop on "default", maintains performance on moderate OOD
+#   aggressive-DR policy: more drop on "default", best on "combined_hard" and "extreme"
+#
+# This is the core result of the ablation study (Phase 3).
+
+eval_configs:
+
+  - name: "default"
+    description: "Standard Fetch physics — the training distribution baseline"
+    # No changes — uses model defaults
+    physics_overrides: {}
+
+  - name: "heavy_object"
+    description: "Object is 3x heavier than default — tests grasping force"
+    physics_overrides:
+      object_mass_multiplier: 3.0   # 3× original mass
+
+  - name: "low_friction"
+    description: "Table friction at 30% — object slides easily"
+    physics_overrides:
+      table_friction_multiplier: 0.3
+
+  - name: "moon_gravity"
+    description: "Gravity reduced to ~lunar (1.62 m/s²) — very different dynamics"
+    physics_overrides:
+      gravity_z: -1.62
+
+  - name: "combined_hard"
+    description: "Heavy object + low friction + reduced gravity simultaneously"
+    physics_overrides:
+      object_mass_multiplier: 2.0
+      table_friction_multiplier: 0.5
+      gravity_z: -7.0
+
+  - name: "extreme"
+    description: "Beyond any training distribution — sanity check for catastrophic failure"
+    physics_overrides:
+      object_mass_multiplier: 5.0
+      table_friction_multiplier: 0.1
+      gravity_z: -15.0
+
+evaluation:
+  n_episodes: 100                 # episodes per policy per config — large enough for statistical significance
+  deterministic: true             # no exploration noise during eval
+  seed: 999                       # different from training seeds

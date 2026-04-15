@@ -1,0 +1,62 @@
+# Training config: PPO on FetchPickAndPlace-v4 (Phase 4)
+#
+# WHY PPO HERE?
+# We compare SAC+HER (off-policy, sparse reward) vs PPO (on-policy, dense reward).
+# This demonstrates WHY HER was invented: PPO without HER on sparse-reward
+# manipulation tasks learns slowly (if at all). The comparison makes the value
+# of HER concrete and measurable.
+#
+# KEY DIFFERENCES FROM SAC CONFIG:
+#
+# 1. reward_type: "dense"
+#    PPO can't use HER (HER needs a replay buffer, which on-policy methods don't have).
+#    Dense reward = -distance_to_goal at each step. This gives the agent a gradient
+#    signal even when it never reaches the goal. Without this, PPO would barely learn.
+#    Gymnasium-Robotics Fetch envs support this natively.
+#
+# 2. n_envs: 8
+#    PPO is on-policy: it collects n_steps transitions from each env, updates the
+#    policy, then discards the data and collects fresh data. More parallel envs =
+#    more diverse data per update = better gradient estimates. PPO benefits from
+#    this in a way that SAC (which has a replay buffer) doesn't.
+#
+# 3. n_steps: 2048
+#    The "rollout length" — how many steps each env collects before an update.
+#    With 8 envs × 2048 steps = 16384 transitions per update batch.
+#    Larger batches = more stable gradient estimates for on-policy methods.
+#
+# 4. No buffer_size, learning_starts, tau — PPO doesn't use a replay buffer.
+
+env:
+  id: "FetchPickAndPlace-v4"
+  reward_type: "dense"            # -distance instead of sparse -1/0
+  n_envs: 8                       # parallel data collection
+
+algorithm: "PPO"
+use_her: false                    # HER incompatible with on-policy methods
+
+hyperparameters:
+  learning_rate: 0.0003           # standard PPO LR (lower than SAC)
+  batch_size: 64                  # minibatch size for PPO updates
+  gamma: 0.99                     # higher discount — dense reward benefits from longer horizon
+  n_steps: 2048                   # steps per env before each update
+  n_epochs: 10                    # how many times to reuse each batch (PPO's key trick)
+  gae_lambda: 0.95                # GAE smoothing parameter (trade bias vs variance)
+  clip_range: 0.2                 # PPO's trust-region clip (prevents too-large policy updates)
+  ent_coef: 0.01                  # entropy bonus (encourages exploration)
+
+training:
+  total_timesteps: 1000000
+  eval_freq: 10000
+  n_eval_episodes: 20
+  seed: 42
+
+wandb:
+  project: "simforge"
+  group: "phase4-algo-compare"
+  tags: ["pick-and-place", "ppo", "dense-reward"]
+
+save:
+  model_dir: "results/models/ppo_pick_place"
+  log_dir: "results/logs/ppo_pick_place"
+  name: "ppo_pp_s42"
