@@ -1,0 +1,91 @@
+# Domain randomization: AGGRESSIVE
+#
+# Wide perturbations — up to ±50–100% from default values.
+# This is an extreme setting designed to stress-test the policy.
+# Real-world robots rarely see variation this large, but training with it
+# forces the policy to learn truly generalizable behaviors.
+#
+# TRADEOFF: Aggressive DR typically hurts in-distribution performance.
+# The policy needs to handle everything from very heavy to very light objects,
+# so it learns a "conservative" strategy rather than an optimal one.
+# But it will perform much better on out-of-distribution (OOD) test cases.
+#
+# This config is used in the Phase 3 ablation to demonstrate the tradeoff.
+# The interesting result is the COMPARISON with no-DR and moderate-DR:
+#   - No DR:         high in-dist, low OOD
+#   - Moderate DR:   slightly lower in-dist, much higher OOD
+#   - Aggressive DR: lower in-dist, highest OOD
+
+domain_randomization:
+
+  # Object mass: 50% to 200% of default (3-4x range)
+  object_mass:
+    body_name: "object0"
+    mjfield: "body_mass"
+    distribution: uniform
+    low: 0.5
+    high: 2.0
+    is_multiplier: true
+    requires_setconst: true
+
+  # Table friction: 30% to 200% of default (very slippery to very grippy)
+  table_friction:
+    geom_name: "table0"
+    mjfield: "geom_friction"
+    component: 0
+    distribution: uniform
+    low: 0.3
+    high: 2.0
+    is_multiplier: true
+    requires_setconst: false
+
+  # Gravity: ±1.5 m/s² (Earth 9.81 to Moon-ish or heavy planet)
+  gravity_z:
+    mjfield: "opt.gravity"
+    component: 2
+    distribution: gaussian
+    low: -9.81
+    high: 1.5
+    is_multiplier: false
+    requires_setconst: false
+
+  # Actuator gains: 60% to 150% (weak to strong actuators)
+  actuator_gains:
+    actuator_name: "robot0:slide0"
+    mjfield: "actuator_gainprm"
+    component: 0
+    distribution: uniform
+    low: 0.6
+    high: 1.5
+    is_multiplier: true
+    requires_setconst: false
+
+  # Object body position on table: small random offset
+  # Simulates imprecise object placement / different table heights
+  # body_pos[i] is a 3-vector [x, y, z]. Component 2 = height.
+  # is_multiplier: false, absolute offset in meters added to default z position.
+  # Note: we don't use is_multiplier here — we want an absolute ±3cm offset.
+  table_height_offset:
+    body_name: "table0"
+    mjfield: "body_pos"
+    component: 2
+    distribution: uniform
+    low: -0.03                    # -3cm
+    high: 0.03                    # +3cm
+    is_multiplier: false
+    requires_setconst: false
+
+  # Observation noise: 15mm — quite noisy sensor
+  observation_noise:
+    wrapper_type: obs_noise
+    distribution: gaussian
+    low: 0.0
+    high: 0.015                   # 15mm std
+    is_multiplier: false
+
+  # Action delay: 2 steps (80ms at 25Hz) — noticeable latency
+  action_delay:
+    wrapper_type: action_delay
+    low: 2
+    high: 2
+    is_multiplier: false

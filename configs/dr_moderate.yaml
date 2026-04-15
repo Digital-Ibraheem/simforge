@@ -1,0 +1,98 @@
+# Domain randomization: MODERATE
+#
+# Mild perturbations — roughly ±20% from default values.
+# This is a realistic approximation of real-world manufacturing tolerances
+# and environment variation. A robot arm might see:
+#   - Objects that weigh 20% more or less than spec
+#   - Slightly slippery or grippy surfaces
+#   - Minor gravity differences (different floors, slight calibration errors)
+#
+# Expected outcome: a policy trained here should be more robust than no-DR
+# while still performing well in-distribution (unlike aggressive-DR which
+# sacrifices in-distribution performance for OOD robustness).
+#
+# MULTIPLIER CONVENTION:
+# is_multiplier: true means low/high are ratios of the original value.
+# low: 0.8, high: 1.2 → "sample from 80% to 120% of the original".
+# This is unitless and works regardless of the model's physical units.
+
+domain_randomization:
+
+  # --- Physics: Object ---
+  object_mass:
+    body_name: "object0"          # look up index by name at runtime
+    mjfield: "body_mass"          # model.body_mass[id]
+    distribution: uniform
+    low: 0.8
+    high: 1.2
+    is_multiplier: true
+    requires_setconst: true       # MUST call mj_setConst after — mass changes invalidate cached inertia constants
+
+  # --- Physics: Table surface friction ---
+  # Friction in MuJoCo is a 3-component vector per geom:
+  #   [0] sliding friction  — resists lateral sliding (most important for grasping)
+  #   [1] torsional friction — resists spinning about the contact normal
+  #   [2] rolling friction   — resists rolling
+  # We only randomize component 0 (sliding), which dominates pick-and-place.
+  table_friction:
+    geom_name: "table0"
+    mjfield: "geom_friction"
+    component: 0                  # 0 = sliding friction
+    distribution: uniform
+    low: 0.8
+    high: 1.2
+    is_multiplier: true
+    requires_setconst: false
+
+  # --- Physics: Gravity ---
+  # The z-component of gravity (component 2). Defaults to -9.81 m/s².
+  # We randomize it slightly — simulates minor calibration differences
+  # or operation at different latitudes (gravity varies ~0.5% globally).
+  # is_multiplier: false so we specify absolute values (m/s²).
+  gravity_z:
+    mjfield: "opt.gravity"        # model.opt.gravity[2]
+    component: 2                  # z-axis (gravity acts downward, so negative)
+    distribution: gaussian
+    low: -9.81                    # mean
+    high: 0.3                     # std — ±0.3 m/s² covers ~3% variation
+    is_multiplier: false
+    requires_setconst: false
+
+  # --- Physics: Actuator gains ---
+  # Actuator gains control how aggressively the controller responds to errors.
+  # "gainprm" is the first parameter of the gain term in MuJoCo's actuator model.
+  # Randomizing it simulates variation in motor strength, gearbox wear, etc.
+  # We use index: null and let the randomizer apply to ALL actuators (set below).
+  # For Fetch, all 4 actuators (3 arm joints + gripper) get the same multiplier.
+  actuator_gains:
+    actuator_name: "robot0:slide0"  # the first Fetch arm actuator
+    mjfield: "actuator_gainprm"
+    component: 0                    # first gain parameter
+    distribution: uniform
+    low: 0.85
+    high: 1.15
+    is_multiplier: true
+    requires_setconst: false
+
+  # --- Wrapper-level: Observation noise ---
+  # Adds Gaussian noise to the observation vector at each step.
+  # Simulates sensor noise in joint encoders and camera-based pose estimates.
+  # std=0.005 ≈ 5mm position noise, which is realistic for vision-based estimation.
+  # This is NOT a MuJoCo model change — it's handled by ObservationNoiseWrapper.
+  observation_noise:
+    wrapper_type: obs_noise
+    distribution: gaussian
+    low: 0.0                      # mean of noise (zero-mean = unbiased sensor)
+    high: 0.005                   # std of noise (5mm)
+    is_multiplier: false
+
+  # --- Wrapper-level: Action delay ---
+  # Delays actions by 1 timestep to simulate control loop latency.
+  # At 25Hz control frequency, 1 step = 40ms of latency.
+  # Real robot control over USB/serial can have 10–100ms latency.
+  # This is handled by ActionDelayWrapper.
+  action_delay:
+    wrapper_type: action_delay
+    low: 1                        # delay_steps (stored in low field)
+    high: 1
+    is_multiplier: false
