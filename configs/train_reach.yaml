@@ -1,0 +1,49 @@
+# Training config: FetchReach-v4 (Phase 1a warmup)
+#
+# FetchReach is the simplest Fetch task: move the gripper to a target position.
+# No grasping required. Use it to:
+#   1. Verify the setup works (SB3, MuJoCo, gymnasium-robotics all installed correctly)
+#   2. See SAC+HER converge in ~15 minutes (vs 3-6 hours for pick-and-place)
+#   3. Understand the observation/action space and training loop before the hard task
+#
+# WHAT TO LOOK FOR:
+#   - success_rate should climb from 0% to >90% within 50k steps
+#   - If it doesn't converge, something is wrong with the setup
+#   - Watch the console output: SB3 prints rollout/ep_rew_mean and rollout/success_rate
+
+env:
+  id: "FetchReach-v4"
+  reward_type: "sparse"           # -1 each step, 0 at goal — HER handles this
+
+algorithm: "SAC"
+use_her: true
+
+hyperparameters:
+  learning_rate: 0.001
+  batch_size: 256
+  buffer_size: 1000000
+  learning_starts: 1000
+  gamma: 0.95                     # shorter planning horizon (max 50 steps/episode)
+  tau: 0.05
+  train_freq: 1
+  gradient_steps: 1
+
+her:
+  n_sampled_goal: 4
+  goal_selection_strategy: "future"
+
+training:
+  total_timesteps: 50000          # reaches convergence well before this
+  eval_freq: 5000
+  n_eval_episodes: 20
+  seed: 42
+
+wandb:
+  project: "simforge"
+  group: "phase1-reach"
+  tags: ["reach", "sac-her", "warmup"]
+
+save:
+  model_dir: "results/models/reach"
+  log_dir: "results/logs/reach"
+  name: "sac_her_reach_s42"

@@ -1,0 +1,67 @@
+# Training config: FetchPickAndPlace-v4 (Phase 1b main task)
+#
+# This is the core task: grasp a block on a table and move it to a target position.
+# Much harder than Reach because:
+#   1. The block must be grasped (requires closing the gripper at the right moment)
+#   2. The block must be lifted (fighting gravity)
+#   3. The block can be dropped (and then re-grasped)
+#
+# OBSERVATION SPACE (Box 25-dim):
+#   [0:3]   grip_pos      — gripper position in world frame (x, y, z) in meters
+#   [3:6]   object_pos    — block position in world frame
+#   [6:9]   object_rel_pos— block position RELATIVE to gripper (useful for grasping)
+#   [9:11]  gripper_state — finger positions (0=closed, 0.05=fully open in meters)
+#   [11:14] object_rot    — block rotation as Euler angles
+#   [15:18] object_velp   — block linear velocity
+#   [18:21] object_velr   — block angular velocity
+#   [21:24] grip_velp     — gripper linear velocity
+#   [24]    gripper_vel   — finger velocity
+#   + achieved_goal (3): current block position
+#   + desired_goal (3):  target block position
+#
+# ACTION SPACE (Box 4-dim, range [-1, 1]):
+#   [0:3]  delta_pos — gripper displacement (x, y, z) in world frame
+#   [3]    gripper   — negative = close fingers, positive = open fingers
+#
+# REWARD STRUCTURE:
+#   sparse: -1 at every step, 0 when block is within 5cm of target
+#   This is what makes HER essential — pure random exploration almost
+#   never reaches the goal position, so the agent gets near-constant -1
+#   reward without any learning signal.
+
+env:
+  id: "FetchPickAndPlace-v4"
+  reward_type: "sparse"
+
+algorithm: "SAC"
+use_her: true
+
+hyperparameters:
+  learning_rate: 0.001
+  batch_size: 256
+  buffer_size: 1000000
+  learning_starts: 1000
+  gamma: 0.95
+  tau: 0.05
+  train_freq: 1
+  gradient_steps: 1
+
+her:
+  n_sampled_goal: 4               # 4 relabeled goals per real transition
+  goal_selection_strategy: "future" # relabel with goals achieved later in same episode
+
+training:
+  total_timesteps: 1000000        # ~3-6 hours on CPU
+  eval_freq: 10000
+  n_eval_episodes: 20
+  seed: 42
+
+wandb:
+  project: "simforge"
+  group: "phase1-pick-place"
+  tags: ["pick-and-place", "sac-her", "no-dr"]
+
+save:
+  model_dir: "results/models/pick_place"
+  log_dir: "results/logs/pick_place"
+  name: "sac_her_pp_s42"
