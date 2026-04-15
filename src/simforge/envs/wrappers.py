@@ -18,7 +18,7 @@ All wrappers here inherit from gymnasium.Wrapper (or sub-types):
 
 WHY WRAPPERS INSTEAD OF SUBCLASSING THE ENV DIRECTLY?
 Composability. You can stack wrappers:
-    env = gym.make("FetchPickAndPlace-v3")
+    env = gym.make("FetchPickAndPlace-v4")
     env = DomainRandomizationWrapper(env, config)
     env = ObservationNoiseWrapper(env, std=0.01)
     env = ActionDelayWrapper(env, delay_steps=1)

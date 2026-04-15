@@ -20,7 +20,7 @@ def make_env(env_id: str, seed: int | None = None, rank: int = 0, **kwargs):
     easy to create multiple envs with different seeds (seed + rank).
 
     Args:
-        env_id: Gymnasium env ID, e.g. "FetchPickAndPlace-v3"
+        env_id: Gymnasium env ID, e.g. "FetchPickAndPlace-v4"
         seed: Base random seed. Each parallel env gets seed + rank.
         rank: Index offset so parallel envs get different seeds.
         **kwargs: Passed through to gym.make() (e.g. reward_type="dense").

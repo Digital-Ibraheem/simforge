@@ -105,7 +105,7 @@ class TrainingConfig:
       - training:   total timesteps, eval frequency, seeds
     """
     # Environment
-    env_id: str = "FetchPickAndPlace-v3"
+    env_id: str = "FetchPickAndPlace-v4"
     reward_type: str = "sparse"         # "sparse" (for SAC+HER) or "dense" (for PPO)
     n_envs: int = 1                     # parallel envs (PPO benefits from >1)
     dr_config: Optional[str] = None     # path to DR YAML, or None for no DR
@@ -291,7 +291,7 @@ def train(cfg: TrainingConfig) -> Any:
         callback=CallbackList(callbacks),
         log_interval=10,         # print SB3's built-in console log every 10 episodes
         reset_num_timesteps=True,
-        progress_bar=True,
+        progress_bar=False,
     )
     elapsed = time.time() - t_start
     print(f"\nTraining done in {elapsed/3600:.1f}h ({elapsed:.0f}s)")
